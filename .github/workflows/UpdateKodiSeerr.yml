@@ -1,0 +1,32 @@
+name: Update KodiSeerr
+on:
+  schedule:
+    - cron: '0 0 * * *' # Runs daily at midnight
+  workflow_dispatch: # Allows you to run it manually
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout your repo
+        uses: actions/checkout@v4
+
+      - name: Download Latest KodiSeerr Release
+        run: |
+          # Gets the latest release download URL
+          URL=$(curl -s api.github.com | grep "browser_download_url" | cut -d '"' -f 4)
+          # Downloads it into your project folder
+          curl -L $URL -o ./plugin.video.kodiseerr.zip
+
+      - name: Run Kodi Repo Generator
+        run: |
+          # If you have the generator script in your repo, run it here
+          python3 _repo_xml_generator.py
+
+      - name: Commit and Push
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          git add .
+          git commit -m "Auto-update KodiSeerr to latest release" || exit 0
+          git push
