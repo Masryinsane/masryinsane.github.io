@@ -1,32 +1,43 @@
-name: Update KodiSeerr
+name: Update KodiSeerr Repo
 on:
   schedule:
-    - cron: '0 0 * * *' # Runs daily at midnight
-  workflow_dispatch: # Allows you to run it manually
+    - cron: '0 0 * * *'
+  workflow_dispatch:
 
 jobs:
   update:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed to push changes back to your repo
     steps:
       - name: Checkout your repo
         uses: actions/checkout@v4
 
       - name: Download Latest KodiSeerr Release
         run: |
-          # Gets the latest release download URL
+          # 1. Get the latest release URL specifically for yocksers/KodiSeerr
           URL=$(curl -s api.github.com | grep "browser_download_url" | cut -d '"' -f 4)
-          # Downloads it into your project folder
-          curl -L $URL -o ./plugin.video.kodiseerr.zip
+          
+          # 2. Create the plugin folder if it doesn't exist
+          mkdir -p plugin.video.kodiseerr
+          
+          # 3. Download the zip into that folder
+          curl -L $URL -o ./plugin.video.kodiseerr/plugin.video.kodiseerr.zip
 
       - name: Run Kodi Repo Generator
         run: |
-          # If you have the generator script in your repo, run it here
-          python3 _repo_xml_generator.py
+          # Ensure the script exists before running
+          if [ -f "_repo_xml_generator.py" ]; then
+            python3 _repo_xml_generator.py
+          else
+            echo "Error: _repo_xml_generator.py not found in root!"
+            exit 1
+          fi
 
       - name: Commit and Push
         run: |
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
           git add .
-          git commit -m "Auto-update KodiSeerr to latest release" || exit 0
+          git commit -m "Auto-update: Synced latest KodiSeerr release" || exit 0
           git push
