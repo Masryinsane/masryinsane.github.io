@@ -1,46 +1,47 @@
 name: Update KodiSeerr Repo
 on:
   schedule:
-    - cron: '0 0 * * *'
-  workflow_dispatch:
+    - cron: '0 0 * * *' # Runs daily at midnight
+  workflow_dispatch:    # Allows you to run it manually
 
 jobs:
   update:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Required for 2025 security standards to push changes
+      contents: write   # Required to save files back to your repo
     steps:
       - name: Checkout your repo
         uses: actions/checkout@v4
 
-      - name: Download Specific KodiSeerr Release (v2.1)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download KodiSeerr v2.1
         run: |
-          # 1. Use the "tags" endpoint instead of "latest"
-          RELEASE_DATA=$(curl -s -H "Authorization: token $GITHUB_TOKEN" api.github.com)
+          # 1. Create the plugin folder
+          mkdir -p plugin.video.kodiseerr
           
-          # 2. Extract the download URL for the ZIP asset
-          URL=$(echo "$RELEASE_DATA" | grep -oP '"browser_download_url":\s*"\K[^"]+' | head -1)
+          # 2. Download the specific v2.1 source archive
+          echo "Downloading KodiSeerr v2.1..."
+          curl -L "github.com" -o ./plugin.video.kodiseerr/plugin.video.kodiseerr.zip
           
-          # 3. Safety check
-          if [ -z "$URL" ]; then
-            echo "Error: Could not find download URL for tag v2.1. API response was:"
-            echo "$RELEASE_DATA"
+          # 3. Verify the file exists
+          if [ ! -f "./plugin.video.kodiseerr/plugin.video.kodiseerr.zip" ]; then
+            echo "Error: Download failed!"
             exit 1
           fi
 
-          echo "Downloading from: $URL"
-          mkdir -p plugin.video.kodiseerr
-          curl -L "$URL" -o ./plugin.video.kodiseerr/plugin.video.kodiseerr.zip
-
-
       - name: Run Kodi Repo Generator
         run: |
+          # Ensure your script file exists in the root
           if [ -f "_repo_xml_generator.py" ]; then
             python3 _repo_xml_generator.py
+          elif [ -f "_repo_generator.py" ]; then
+            python3 _repo_generator.py
           else
-            echo "Error: _repo_xml_generator.py not found in root!"
+            echo "Error: No generator script found in root!"
             exit 1
           fi
 
@@ -49,5 +50,6 @@ jobs:
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
           git add .
-          git commit -m "Auto-update: Synced latest KodiSeerr release" || exit 0
+          # Only commit if there are actual changes to the files
+          git commit -m "Auto-update: Synced KodiSeerr v2.1" || exit 0
           git push
